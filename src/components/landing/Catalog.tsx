@@ -4,16 +4,11 @@ import { getSettings } from '@/lib/settings';
 
 export default async function Catalog() {
   const settings = await getSettings();
-  const products = settings.featured_products && settings.featured_products.length > 0 
-    ? settings.featured_products 
-    : [
-        { name: 'Kertas HVS A4 70gsm', category: 'Office Supply', image_url: '' },
-        { name: 'Tinta Printer HP 680', category: 'Office Supply', image_url: '' },
-        { name: 'Kabel NYM 3x2.5mm', category: 'MEP', image_url: '' },
-        { name: 'Safety Helmet SNI', category: 'Alat Teknik', image_url: '' },
-        { name: 'Pipa PVC 3/4 inch', category: 'MEP', image_url: '' },
-        { name: 'Dispenser Hot & Cold', category: 'Rumah Tangga', image_url: '' },
-      ];
+  const products = settings.featured_products || [];
+
+  if (products.length === 0) {
+    return null;
+  }
 
   const waPhone = settings.company_phone.replace(/[^0-9]/g, '');
 
@@ -44,7 +39,7 @@ export default async function Catalog() {
                 <h3 className="text-lg font-bold text-slate-900 mb-4">{product.name}</h3>
                 
                 <a 
-                  href={`https://wa.me/${waPhone}?text=Halo%20${encodeURIComponent(settings.company_name)},%20saya%20ingin%20bertanya%20harga%20untuk%20${encodeURIComponent(product.name)}`}
+                  href={`https://wa.me/${waPhone}?text=Hai%20kak%2C%20produk%20${encodeURIComponent(product.name)}%20apa%20masih%20ada%20ya%3F`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-2.5 border border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white rounded-lg font-medium transition-colors"
@@ -59,7 +54,7 @@ export default async function Catalog() {
         
         <div className="mt-12 text-center">
           <a 
-            href={`https://wa.me/${waPhone}`}
+            href={`https://wa.me/${waPhone}?text=Hai%20kak%2C%20saya%20mau%20tanya%20produk%20lainnya%20dong`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-amber-600 font-semibold hover:text-amber-700 hover:underline"
