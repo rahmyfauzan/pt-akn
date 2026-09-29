@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { Quotation } from '@/types';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -17,6 +17,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [status, setStatus] = useState<Quotation['status']>('DRAFT');
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
     const fetchQuotation = async () => {
@@ -55,95 +56,171 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!quotation) return;
+    setGeneratingPDF(true);
     
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PT AKN', 14, 22);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text('One-Stop Procurement Solution', 14, 28);
-    
-    // Title
-    doc.setFontSize(16);
-    doc.setTextColor(0);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SURAT PENAWARAN HARGA', 105, 45, { align: 'center' });
-    
-    // Info
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`No. Quotation : ${quotation.quotation_number}`, 14, 60);
-    doc.text(`Tanggal : ${formatDate(quotation.created_at)}`, 14, 66);
-    
-    doc.text('Kepada Yth:', 140, 60);
-    doc.setFont('helvetica', 'bold');
-    doc.text(quotation.client_name, 140, 66);
-    doc.setFont('helvetica', 'normal');
-    if (quotation.client_company) doc.text(quotation.client_company, 140, 72);
-    if (quotation.client_address) {
-      const splitAddress = doc.splitTextToSize(quotation.client_address, 60);
-      doc.text(splitAddress, 140, 78);
-    }
-    
-    // Table
-    const tableData = quotation.items.map((item, index) => [
-      index + 1,
-      item.item_name,
-      item.quantity,
-      item.unit,
-      formatCurrency(item.unit_price),
-      formatCurrency(item.subtotal)
-    ]);
-    
-    autoTable(doc, {
-      startY: 95,
-      head: [['No', 'Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42] }, // Slate 900
-      styles: { fontSize: 9 },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },
-        2: { halign: 'center' },
-        3: { halign: 'center' },
-        4: { halign: 'right' },
-        5: { halign: 'right', fontStyle: 'bold' }
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PT AKN', 14, 22);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text('One-Stop Procurement Solution', 14, 28);
+      
+      // Title
+      doc.setFontSize(16);
+      doc.setTextColor(0);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SURAT PENAWARAN HARGA', 105, 45, { align: 'center' });
+      
+      // Info
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`No. Quotation : ${quotation.quotation_number}`, 14, 60);
+      doc.text(`Tanggal : ${formatDate(quotation.created_at)}`, 14, 66);
+      
+      const validUntil = new Date(quotation.created_at);
+      validUntil.setDate(validUntil.getDate() + (quotation.valid_days || 7));
+      doc.text(`Berlaku Hingga : ${formatDate(validUntil.toISOString())}`, 14, 72);
+      
+      doc.text('Kepada Yth:', 140, 60);
+      doc.setFont('helvetica', 'bold');
+      doc.text(quotation.client_name, 140, 66);
+      doc.setFont('helvetica', 'normal');
+      if (quotation.client_company) doc.text(quotation.client_company, 140, 72);
+      if (quotation.client_address) {
+        const splitAddress = doc.splitTextToSize(quotation.client_address, 60);
+        doc.text(splitAddress, 140, 78);
       }
-    });
-    
-    // @ts-ignore
-    const finalY = (doc as any).lastAutoTable?.finalY || 100;
-    
-    // Grand Total
-    doc.setFont('helvetica', 'bold');
-    doc.text('Grand Total:', 140, finalY + 10);
-    doc.text(formatCurrency(quotation.grand_total), 196, finalY + 10, { align: 'right' });
-    
-    // Notes
-    doc.setFont('helvetica', 'bold');
-    doc.text('Catatan & Syarat:', 14, finalY + 25);
-    doc.setFont('helvetica', 'normal');
-    const splitNotes = doc.splitTextToSize(quotation.notes || '-', 180);
-    doc.text(splitNotes, 14, finalY + 31);
-    
-    // Footer
-    const footerY = finalY + Math.max(40, splitNotes.length * 5 + 10);
-    doc.text('Hormat kami,', 14, footerY);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PT AKN', 14, footerY + 20);
-    
-    doc.save(`${quotation.quotation_number}.pdf`);
+
+      // Fetch images for PDF (convert to base64 via proxy)
+      const tableData = [];
+      for (let i = 0; i < quotation.items.length; i++) {
+        const item = quotation.items[i];
+        let base64Img = null;
+        
+        if (item.image_url) {
+          try {
+            const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(item.image_url)}`);
+            if (res.ok) {
+              const data = await res.json();
+              base64Img = data.dataUri;
+            }
+          } catch (e) {
+            console.error('Failed to load image for PDF', e);
+          }
+        }
+
+        tableData.push([
+          i + 1,
+          base64Img, // Will be drawn in didDrawCell
+          item.item_name,
+          item.quantity,
+          item.unit,
+          formatCurrency(item.unit_price),
+          formatCurrency(item.subtotal)
+        ]);
+      }
+      
+      autoTable(doc, {
+        startY: 95,
+        head: [['No', 'Gambar', 'Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] },
+        styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { halign: 'center', cellWidth: 20, minCellHeight: 20 }, // Kolom gambar
+          3: { halign: 'center', cellWidth: 12 },
+          4: { halign: 'center', cellWidth: 18 },
+          5: { halign: 'right' },
+          6: { halign: 'right', fontStyle: 'bold' }
+        },
+        didDrawCell: function(data) {
+          if (data.column.index === 1 && data.cell.section === 'body') {
+            const base64Img = tableData[data.row.index][1];
+            if (base64Img && typeof base64Img === 'string') {
+              // Draw image within cell constraints (with padding)
+              const dim = 14; 
+              doc.addImage(base64Img, 'JPEG', data.cell.x + 3, data.cell.y + 3, dim, dim);
+            }
+          }
+        },
+        willDrawCell: function(data) {
+          // Hide base64 string text from rendering
+          if (data.column.index === 1 && data.cell.section === 'body') {
+            data.cell.text = []; 
+          }
+        }
+      });
+      
+      // @ts-ignore
+      const finalY = (doc as any).lastAutoTable?.finalY || 100;
+      
+      // Calculation Breakdown
+      const subtotal = quotation.items.reduce((sum, item) => sum + item.subtotal, 0);
+      let currentY = finalY + 10;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Subtotal:', 140, currentY);
+      doc.text(formatCurrency(subtotal), 196, currentY, { align: 'right' });
+      currentY += 6;
+
+      if (quotation.discount > 0) {
+        doc.text('Diskon:', 140, currentY);
+        doc.text(`-${formatCurrency(quotation.discount)}`, 196, currentY, { align: 'right' });
+        currentY += 6;
+      }
+
+      if (quotation.tax_rate > 0) {
+        const taxAmount = (subtotal - quotation.discount) * (quotation.tax_rate / 100);
+        doc.text(`PPN (${quotation.tax_rate}%):`, 140, currentY);
+        doc.text(formatCurrency(taxAmount), 196, currentY, { align: 'right' });
+        currentY += 6;
+      }
+
+      // Grand Total
+      currentY += 2;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Grand Total:', 140, currentY);
+      doc.text(formatCurrency(quotation.grand_total), 196, currentY, { align: 'right' });
+      
+      // Notes
+      doc.setFontSize(10);
+      doc.text('Catatan & Informasi Pembayaran:', 14, currentY + 15);
+      doc.setFont('helvetica', 'normal');
+      const splitNotes = doc.splitTextToSize(quotation.notes || '-', 180);
+      doc.text(splitNotes, 14, currentY + 22);
+      
+      // Footer
+      const footerY = currentY + 22 + Math.max(20, splitNotes.length * 5);
+      doc.text('Hormat kami,', 14, footerY);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PT AKN', 14, footerY + 20);
+      
+      doc.save(`${quotation.quotation_number}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Gagal menghasilkan PDF');
+    } finally {
+      setGeneratingPDF(false);
+    }
   };
 
   if (loading) return <div>Memuat detail...</div>;
   if (!quotation) return <div>Quotation tidak ditemukan.</div>;
+
+  const subtotal = quotation.items.reduce((sum, item) => sum + item.subtotal, 0);
+  const taxAmount = (subtotal - quotation.discount) * (quotation.tax_rate / 100);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -184,10 +261,11 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         
         <button 
           onClick={generatePDF}
-          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors font-medium text-sm"
+          disabled={generatingPDF}
+          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors font-medium text-sm disabled:opacity-50"
         >
-          <Download size={18} />
-          <span>Download PDF</span>
+          {generatingPDF ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} />}
+          <span>{generatingPDF ? 'Memproses PDF...' : 'Download PDF'}</span>
         </button>
       </div>
 
@@ -217,8 +295,12 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
                 <p className="text-slate-800 text-sm">{quotation.client_address}</p>
               </div>
             )}
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-xs text-slate-500 uppercase font-semibold">Masa Berlaku</p>
+              <p className="text-slate-800">{quotation.valid_days} Hari</p>
+            </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase font-semibold mt-6">Dibuat Oleh</p>
+              <p className="text-xs text-slate-500 uppercase font-semibold">Dibuat Oleh</p>
               <p className="text-slate-800">{quotation.created_by_name}</p>
             </div>
           </div>
@@ -230,39 +312,70 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
               <h2 className="text-lg font-semibold text-slate-800">Detail Barang</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-sm min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
-                    <th className="px-6 py-3 font-medium">No</th>
-                    <th className="px-6 py-3 font-medium">Nama Barang</th>
-                    <th className="px-6 py-3 font-medium text-center">Qty</th>
-                    <th className="px-6 py-3 font-medium text-center">Satuan</th>
-                    <th className="px-6 py-3 font-medium text-right">Harga Satuan</th>
-                    <th className="px-6 py-3 font-medium text-right">Subtotal</th>
+                    <th className="px-4 py-3 font-medium">No</th>
+                    <th className="px-4 py-3 font-medium text-center">Gambar</th>
+                    <th className="px-4 py-3 font-medium">Nama Barang</th>
+                    <th className="px-4 py-3 font-medium text-center">Qty</th>
+                    <th className="px-4 py-3 font-medium text-center">Satuan</th>
+                    <th className="px-4 py-3 font-medium text-right">Harga Satuan</th>
+                    <th className="px-4 py-3 font-medium text-right">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {quotation.items.map((item, idx) => (
                     <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-slate-500">{idx + 1}</td>
-                      <td className="px-6 py-4 font-medium text-slate-800">{item.item_name}</td>
-                      <td className="px-6 py-4 text-center text-slate-700">{item.quantity}</td>
-                      <td className="px-6 py-4 text-center text-slate-700">{item.unit}</td>
-                      <td className="px-6 py-4 text-right text-slate-700">{formatCurrency(item.unit_price)}</td>
-                      <td className="px-6 py-4 text-right font-medium text-slate-800">{formatCurrency(item.subtotal)}</td>
+                      <td className="px-4 py-4 text-slate-500">{idx + 1}</td>
+                      <td className="px-4 py-2 text-center">
+                        {item.image_url ? (
+                          <div className="w-12 h-12 rounded overflow-hidden mx-auto bg-slate-100 flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.image_url} alt={item.item_name} className="object-cover w-full h-full" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded mx-auto bg-slate-100 flex items-center justify-center text-slate-300">
+                            <ImageIcon size={20} />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 font-medium text-slate-800">{item.item_name}</td>
+                      <td className="px-4 py-4 text-center text-slate-700">{item.quantity}</td>
+                      <td className="px-4 py-4 text-center text-slate-700">{item.unit}</td>
+                      <td className="px-4 py-4 text-right text-slate-700">{formatCurrency(item.unit_price)}</td>
+                      <td className="px-4 py-4 text-right font-medium text-slate-800">{formatCurrency(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="bg-slate-50 p-6 flex justify-between items-center border-t border-slate-200">
-              <span className="font-semibold text-slate-700 uppercase tracking-wide">Grand Total</span>
-              <span className="text-2xl font-bold text-slate-900">{formatCurrency(quotation.grand_total)}</span>
+            <div className="bg-slate-50 p-6 flex flex-col items-end gap-2 border-t border-slate-200 text-sm">
+              <div className="flex justify-between w-64">
+                <span className="text-slate-500">Subtotal</span>
+                <span className="font-medium text-slate-700">{formatCurrency(subtotal)}</span>
+              </div>
+              {quotation.discount > 0 && (
+                <div className="flex justify-between w-64 text-red-500">
+                  <span>Diskon</span>
+                  <span>-{formatCurrency(quotation.discount)}</span>
+                </div>
+              )}
+              {quotation.tax_rate > 0 && (
+                <div className="flex justify-between w-64">
+                  <span className="text-slate-500">PPN ({quotation.tax_rate}%)</span>
+                  <span className="font-medium text-slate-700">{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between w-64 pt-2 border-t border-slate-200 mt-1">
+                <span className="font-bold text-slate-700 uppercase tracking-wide">Grand Total</span>
+                <span className="text-xl font-bold text-amber-600">{formatCurrency(quotation.grand_total)}</span>
+              </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-800 mb-3">Catatan & Syarat</h2>
+            <h2 className="text-lg font-semibold text-slate-800 mb-3">Catatan & Informasi Pembayaran</h2>
             <div className="bg-slate-50 p-4 rounded-lg whitespace-pre-wrap text-sm text-slate-700 font-medium">
               {quotation.notes || '-'}
             </div>

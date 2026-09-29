@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { client_name, client_company, client_address, client_phone, items, notes } = body;
+    const { client_name, client_company, client_address, client_phone, items, notes, discount = 0, tax_rate = 0, valid_days = 7 } = body;
 
     if (!client_name || !items || items.length === 0) {
       return NextResponse.json(
@@ -48,11 +48,18 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient();
     const quotationId = uuidv4();
-    const grandTotal = items.reduce(
+    
+    // Hitung subtotal barang
+    const itemsTotal = items.reduce(
       (sum: number, item: { quantity: number; unit_price: number }) =>
         sum + item.quantity * item.unit_price,
       0
     );
+
+    // Hitung PPN (setelah dipotong diskon)
+    const amountAfterDiscount = itemsTotal - Number(discount);
+    const taxAmount = amountAfterDiscount * (Number(tax_rate) / 100);
+    const grandTotal = amountAfterDiscount + taxAmount;
 
     // Insert quotation
     const { error: quotationError } = await supabase.from('quotations').insert({
@@ -63,6 +70,9 @@ export async function POST(request: NextRequest) {
       client_address: client_address || '',
       client_phone: client_phone || '',
       status: 'DRAFT',
+      discount: Number(discount),
+      tax_rate: Number(tax_rate),
+      valid_days: Number(valid_days),
       grand_total: grandTotal,
       notes: notes || '',
       created_by: session.id,
@@ -74,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Insert items
     const quotationItems = items.map(
-      (item: { item_name: string; quantity: number; unit: string; unit_price: number }) => ({
+      (item: { item_name: string; quantity: number; unit: string; unit_price: number; image_url?: string }) => ({
         id: uuidv4(),
         quotation_id: quotationId,
         item_name: item.item_name,
@@ -82,6 +92,7 @@ export async function POST(request: NextRequest) {
         unit: item.unit || 'pcs',
         unit_price: item.unit_price,
         subtotal: item.quantity * item.unit_price,
+        image_url: item.image_url || '',
       })
     );
 

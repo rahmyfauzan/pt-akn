@@ -12,6 +12,7 @@ export interface QuotationItem {
   unit: string;
   unit_price: number;
   subtotal: number;
+  image_url?: string;
 }
 
 export interface Quotation {
@@ -23,6 +24,9 @@ export interface Quotation {
   client_phone: string;
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED';
   items: QuotationItem[];
+  discount: number;
+  tax_rate: number;
+  valid_days: number;
   grand_total: number;
   notes: string;
   created_at: string;
@@ -36,5 +40,8 @@ export interface QuotationFormData {
   client_address: string;
   client_phone: string;
   items: Omit<QuotationItem, 'id' | 'subtotal'>[];
+  discount: number;
+  tax_rate: number;
+  valid_days: number;
   notes: string;
 }
