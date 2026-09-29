@@ -27,10 +27,18 @@ export default function CreateQuotationPage() {
   });
 
   useEffect(() => {
-    fetch('/api/suggestions')
-      .then(res => res.json())
-      .then(data => setSuggestions({ clients: data.clients || [], items: data.items || [] }))
-      .catch(err => console.error('Failed to load suggestions', err));
+    Promise.all([
+      fetch('/api/suggestions').then(res => res.json()),
+      fetch('/api/settings').then(res => res.json())
+    ])
+      .then(([sugData, setData]) => {
+        setSuggestions({ clients: sugData.clients || [], items: sugData.items || [] });
+        if (setData.settings) {
+          const notes = `${setData.settings.pdf_notes || ''}\n${setData.settings.bank_account || ''}`.trim();
+          if (notes) setFormData(prev => ({ ...prev, notes }));
+        }
+      })
+      .catch(err => console.error('Failed to load initial data', err));
   }, []);
 
   const handleClientSelect = (name: string) => {

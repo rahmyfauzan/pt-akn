@@ -47,3 +47,22 @@ export interface QuotationFormData {
   valid_days: number;
   notes: string;
 }
+
+export interface Settings {
+  id?: number;
+  company_name: string;
+  company_tagline: string;
+  company_address: string;
+  company_phone: string;
+  company_email: string;
+  bank_account: string;
+  pdf_notes: string;
+  hero_title: string;
+  hero_subtitle: string;
+  featured_products: {
+    id: string;
+    name: string;
+    category: string;
+    image_url: string;
+  }[];
+}

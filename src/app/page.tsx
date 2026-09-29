@@ -4,11 +4,14 @@ import About from "@/components/landing/About";
 import Services from "@/components/landing/Services";
 import Catalog from "@/components/landing/Catalog";
 import Footer from "@/components/landing/Footer";
+import { getSettings } from "@/lib/settings";
 
-export default function Home() {
+export default async function Home() {
+  const settings = await getSettings();
+
   return (
     <main>
-      <Navbar />
+      <Navbar settings={settings} />
       <Hero />
       <About />
       <Services />

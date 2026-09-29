@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FileText, LogOut, Menu, X, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { User } from '@/types';
@@ -19,6 +19,7 @@ export default function Sidebar({ user }: SidebarProps) {
   const navItems = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Quotations', href: '/admin/quotations', icon: FileText },
+    { label: 'Pengaturan', href: '/admin/settings', icon: SettingsIcon },
   ];
 
   const handleLogout = async () => {

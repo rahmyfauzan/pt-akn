@@ -1,19 +1,22 @@
 import React from 'react';
 import { MessageCircle, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
+import { getSettings } from '@/lib/settings';
 
-export default function Hero() {
+export default async function Hero() {
+  const settings = await getSettings();
+  
   return (
     <section className="relative w-full pt-36 pb-20 lg:min-h-[100dvh] lg:flex lg:items-center lg:pt-20 lg:pb-0 gradient-hero overflow-hidden">
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 animate-fade-in-up">
-            <span className="block mb-2">Solusi Pengadaan</span>
-            <span className="block text-amber-500">Satu Pintu</span>
+            <span className="block mb-2">{settings.hero_title}</span>
+            <span className="block text-amber-500 text-3xl md:text-5xl mt-4">{settings.company_tagline}</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in-up animate-delay-100">
-            PT AKN hadir sebagai mitra strategis Anda dalam pengadaan barang. Dari ATK hingga MEP, kami sediakan semuanya dengan kualitas terbaik dan harga kompetitif.
+          <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in-up animate-delay-100 whitespace-pre-wrap">
+            {settings.hero_subtitle}
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up animate-delay-200">

@@ -1,8 +1,11 @@
 import React from 'react';
 import { MapPin, Mail, Phone, Camera, Globe } from 'lucide-react';
 import Link from 'next/link';
+import { getSettings } from '@/lib/settings';
 
-export default function Footer() {
+export default async function Footer() {
+  const settings = await getSettings();
+
   return (
     <footer id="kontak" className="bg-slate-900 text-slate-300 pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-6">
@@ -10,11 +13,11 @@ export default function Footer() {
           {/* Col 1 */}
           <div>
             <div className="flex items-center gap-1 text-2xl font-bold tracking-tighter mb-6">
-              <span className="text-white">PT</span>
-              <span className="text-amber-500">AKN</span>
+              <span className="text-white">{settings.company_name.replace('PT ', '')}</span>
+              <span className="text-amber-500">PT</span>
             </div>
             <p className="mb-6 leading-relaxed text-slate-400">
-              General Supplier & One-Stop Procurement Solution. Memenuhi segala kebutuhan bisnis Anda dengan semangat profesionalitas dan layanan terbaik.
+              {settings.company_tagline}. Memenuhi segala kebutuhan bisnis Anda dengan semangat profesionalitas dan layanan terbaik.
             </p>
             <div className="flex gap-4">
               <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-amber-500 hover:text-white transition-colors">
@@ -55,22 +58,22 @@ export default function Footer() {
             <ul className="flex flex-col gap-4">
               <li className="flex gap-3">
                 <MapPin size={20} className="text-amber-500 flex-shrink-0 mt-1" />
-                <span>Jl. Contoh Alamat No. 123, Jakarta, Indonesia</span>
+                <span>{settings.company_address}</span>
               </li>
               <li className="flex gap-3">
                 <Mail size={20} className="text-amber-500 flex-shrink-0 mt-1" />
-                <a href="mailto:info@ptakn.co.id" className="hover:text-amber-500 transition-colors">info@ptakn.co.id</a>
+                <a href={`mailto:${settings.company_email}`} className="hover:text-amber-500 transition-colors">{settings.company_email}</a>
               </li>
               <li className="flex gap-3">
                 <Phone size={20} className="text-amber-500 flex-shrink-0 mt-1" />
-                <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">+62 812-3456-7890 (WA)</a>
+                <a href={`https://wa.me/${settings.company_phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">+{settings.company_phone} (WA)</a>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
-          <p>Copyright © {new Date().getFullYear()} PT AKN. All rights reserved.</p>
+          <p>Copyright © {new Date().getFullYear()} {settings.company_name}. All rights reserved.</p>
         </div>
       </div>
     </footer>

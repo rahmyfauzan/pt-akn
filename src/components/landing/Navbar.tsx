@@ -3,8 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Phone } from 'lucide-react';
 import Link from 'next/link';
+import { Settings } from '@/types';
 
-export default function Navbar() {
+interface NavbarProps {
+  settings: Settings;
+}
+
+export default function Navbar({ settings }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -15,6 +20,8 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const waPhone = settings.company_phone.replace(/[^0-9]/g, '');
 
   const navLinks = [
     { name: 'Beranda', href: '#' },
@@ -33,8 +40,8 @@ export default function Navbar() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           <Link href="#" className="flex items-center gap-1 text-2xl font-bold tracking-tighter">
-            <span className={isScrolled ? 'text-slate-900' : 'text-white'}>PT</span>
-            <span className="text-amber-500">AKN</span>
+            <span className={isScrolled ? 'text-slate-900' : 'text-white'}>{settings.company_name.replace('PT ', '')}</span>
+            <span className="text-amber-500">PT</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -54,7 +61,7 @@ export default function Navbar() {
               ))}
             </ul>
             <a
-              href="https://wa.me/6281234567890"
+              href={`https://wa.me/${waPhone}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-full font-medium transition-colors"
@@ -91,7 +98,7 @@ export default function Navbar() {
             ))}
           </ul>
           <a
-            href="https://wa.me/6281234567890"
+            href={`https://wa.me/${waPhone}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 bg-amber-500 text-white px-5 py-3 rounded-md font-medium w-full"

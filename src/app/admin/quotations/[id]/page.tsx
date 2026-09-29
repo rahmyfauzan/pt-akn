@@ -14,19 +14,27 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const { id } = use(params);
   const [quotation, setQuotation] = useState<Quotation | null>(null);
+  const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [status, setStatus] = useState<Quotation['status']>('DRAFT');
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
-    const fetchQuotation = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/quotations/${id}`);
-        if (res.ok) {
-          const data = await res.json();
+        const [resQuo, resSet] = await Promise.all([
+          fetch(`/api/quotations/${id}`),
+          fetch('/api/settings')
+        ]);
+        if (resQuo.ok) {
+          const data = await resQuo.json();
           setQuotation(data.quotation);
           setStatus(data.quotation.status);
+        }
+        if (resSet.ok) {
+          const data = await resSet.json();
+          setSettings(data.settings);
         }
       } catch (error) {
         console.error('Failed to fetch', error);
@@ -34,7 +42,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         setLoading(false);
       }
     };
-    fetchQuotation();
+    fetchData();
   }, [id]);
 
   const handleUpdateStatus = async () => {
@@ -63,15 +71,18 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
     try {
       const doc = new jsPDF();
       
+      const companyName = settings?.company_name || 'PT AKN';
+      const companyTagline = settings?.company_tagline || 'One-Stop Procurement Solution';
+      
       // Header
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
-      doc.text('PT AKN', 14, 22);
+      doc.text(companyName, 14, 22);
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100);
-      doc.text('One-Stop Procurement Solution', 14, 28);
+      doc.text(companyTagline, 14, 28);
       
       // Title
       doc.setFontSize(16);
@@ -215,7 +226,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
       const footerY = currentY + 22 + Math.max(20, splitNotes.length * 5);
       doc.text('Hormat kami,', 14, footerY);
       doc.setFont('helvetica', 'bold');
-      doc.text('PT AKN', 14, footerY + 20);
+      doc.text(companyName, 14, footerY + 20);
       
       doc.save(`${quotation.quotation_number}.pdf`);
     } catch (err) {
