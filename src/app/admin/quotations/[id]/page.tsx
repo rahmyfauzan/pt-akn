@@ -100,7 +100,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
       }
 
       // Fetch images for PDF (convert to base64 via proxy)
-      const tableData = [];
+      const tableData: any[][] = [];
       for (let i = 0; i < quotation.items.length; i++) {
         const item = quotation.items[i];
         let base64Img = null;

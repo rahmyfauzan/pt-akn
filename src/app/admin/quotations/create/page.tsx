@@ -10,7 +10,7 @@ export default function CreateQuotationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [suggestions, setSuggestions] = useState({ clients: [], items: [] });
+  const [suggestions, setSuggestions] = useState<{ clients: any[], items: any[] }>({ clients: [], items: [] });
   
   const [formData, setFormData] = useState<QuotationFormData>({
     client_name: '',
