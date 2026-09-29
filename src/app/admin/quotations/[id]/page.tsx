@@ -110,7 +110,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         doc.text(splitAddress, 140, 78);
       }
 
-      // Fetch images for PDF (convert to base64 via proxy)
+      // Fetch images for PDF (convert to base64 via browser + wsrv.nl proxy)
       const tableData: any[][] = [];
       for (let i = 0; i < quotation.items.length; i++) {
         const item = quotation.items[i];
@@ -118,10 +118,19 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         
         if (item.image_url) {
           try {
-            const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(item.image_url)}`);
+            // Kita fetch langsung dari browser via proxy wsrv.nl agar tidak terkena limit serverless Vercel
+            const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.image_url)}&output=jpg&w=400&q=80`;
+            const res = await fetch(optimizedUrl);
             if (res.ok) {
-              const data = await res.json();
-              base64Img = data.dataUri;
+              const blob = await res.blob();
+              base64Img = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            } else {
+              console.warn('Gagal memuat gambar dari:', optimizedUrl, res.status);
             }
           } catch (e) {
             console.error('Failed to load image for PDF', e);
@@ -159,10 +168,9 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
             const base64Img = tableData[data.row.index][1];
             if (base64Img && typeof base64Img === 'string') {
               try {
-                // Determine format from dataURI or default to JPEG
-                const format = base64Img.includes('image/png') ? 'PNG' : 'JPEG';
+                // Selalu asumsikan JPEG karena wsrv.nl sudah memaksa output=jpg
                 const dim = 14; 
-                doc.addImage(base64Img, format, data.cell.x + 3, data.cell.y + 3, dim, dim);
+                doc.addImage(base64Img, 'JPEG', data.cell.x + 3, data.cell.y + 3, dim, dim);
               } catch(e) {
                 console.error("Failed drawing image in PDF", e);
               }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Settings } from '@/types';
 
 export default function SettingsPage() {
@@ -26,7 +26,13 @@ export default function SettingsPage() {
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
-        if (data.settings) setSettings(data.settings);
+        if (data.settings) {
+          const products = data.settings.featured_products || [];
+          while (products.length < 6) {
+            products.push({ id: Math.random().toString(36).substr(2, 9), name: '', category: '', image_url: '' });
+          }
+          setSettings({ ...data.settings, featured_products: products.slice(0, 6) });
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -36,11 +42,17 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage({ text: '', type: '' });
     
+    // Filter out completely empty products before saving
+    const cleanedSettings = {
+      ...settings,
+      featured_products: settings.featured_products.filter(p => p.name.trim() !== '')
+    };
+    
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(cleanedSettings)
       });
       
       if (!res.ok) throw new Error('Gagal menyimpan pengaturan');
@@ -53,25 +65,9 @@ export default function SettingsPage() {
     }
   };
 
-  const addProduct = () => {
-    setSettings(prev => ({
-      ...prev,
-      featured_products: [
-        ...prev.featured_products,
-        { id: Math.random().toString(36).substr(2, 9), name: '', category: '', image_url: '' }
-      ]
-    }));
-  };
-
   const updateProduct = (index: number, field: string, value: string) => {
     const newProducts = [...settings.featured_products];
     newProducts[index] = { ...newProducts[index], [field]: value };
-    setSettings({ ...settings, featured_products: newProducts });
-  };
-
-  const removeProduct = (index: number) => {
-    const newProducts = [...settings.featured_products];
-    newProducts.splice(index, 1);
     setSettings({ ...settings, featured_products: newProducts });
   };
 
@@ -161,46 +157,36 @@ export default function SettingsPage() {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium text-slate-700">Produk Unggulan (Katalog)</h3>
-              <button type="button" onClick={addProduct} className="flex items-center space-x-1 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100">
-                <Plus size={16} /> <span>Tambah Produk</span>
-              </button>
+              <h3 className="font-medium text-slate-700">Produk Unggulan (Maks. 6 Produk)</h3>
+              <p className="text-xs text-slate-500">Isi form di bawah. Form yang dikosongkan tidak akan ditampilkan.</p>
             </div>
             
-            {settings.featured_products.length === 0 ? (
-              <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 text-sm">
-                Belum ada produk unggulan yang ditampilkan di halaman depan.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {settings.featured_products.map((product, idx) => (
-                  <div key={product.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200 relative">
-                    <button type="button" onClick={() => removeProduct(idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-600 bg-white rounded shadow-sm">
-                      <Trash2 size={14} />
-                    </button>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Nama Produk</label>
-                        <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
-                          value={product.name} onChange={e => updateProduct(idx, 'name', e.target.value)} required />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Kategori</label>
-                          <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
-                            value={product.category} onChange={e => updateProduct(idx, 'category', e.target.value)} placeholder="Misal: ATK" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Link Gambar</label>
-                          <input type="url" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
-                            value={product.image_url} onChange={e => updateProduct(idx, 'image_url', e.target.value)} placeholder="https://..." />
-                        </div>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {settings.featured_products.map((product, idx) => (
+                <div key={product.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200 relative">
+                  <div className="absolute top-0 right-0 bg-slate-200 text-slate-500 text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg font-semibold">
+                    Slot {idx + 1}
+                  </div>
+                  <div className="space-y-3 mt-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Nama Produk</label>
+                      <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
+                        value={product.name} onChange={e => updateProduct(idx, 'name', e.target.value)} placeholder="Boleh dikosongkan" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Kategori</label>
+                      <input type="text" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
+                        value={product.category} onChange={e => updateProduct(idx, 'category', e.target.value)} placeholder="Misal: ATK" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Link Gambar</label>
+                      <input type="url" className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded outline-none focus:border-amber-500"
+                        value={product.image_url} onChange={e => updateProduct(idx, 'image_url', e.target.value)} placeholder="https://..." />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
