@@ -26,6 +26,7 @@ export interface Quotation {
   items: QuotationItem[];
   discount: number;
   tax_rate: number;
+  shipping_fee: number;
   valid_days: number;
   grand_total: number;
   notes: string;
@@ -42,6 +43,7 @@ export interface QuotationFormData {
   items: Omit<QuotationItem, 'id' | 'subtotal'>[];
   discount: number;
   tax_rate: number;
+  shipping_fee: number;
   valid_days: number;
   notes: string;
 }

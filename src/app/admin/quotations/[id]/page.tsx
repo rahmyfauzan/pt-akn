@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Image as ImageIcon, Edit } from 'lucide-react';
 import { Quotation } from '@/types';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -123,8 +123,8 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
           item.item_name,
           item.quantity,
           item.unit,
-          formatCurrency(item.unit_price),
-          formatCurrency(item.subtotal)
+          formatCurrency(item.unit_price || 0),
+          formatCurrency((item.quantity * (item.unit_price || 0)))
         ]);
       }
       
@@ -137,7 +137,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
         columnStyles: {
           0: { halign: 'center', cellWidth: 10 },
-          1: { halign: 'center', cellWidth: 20, minCellHeight: 20 }, // Kolom gambar
+          1: { halign: 'center', cellWidth: 20, minCellHeight: 20 },
           3: { halign: 'center', cellWidth: 12 },
           4: { halign: 'center', cellWidth: 18 },
           5: { halign: 'right' },
@@ -147,14 +147,18 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
           if (data.column.index === 1 && data.cell.section === 'body') {
             const base64Img = tableData[data.row.index][1];
             if (base64Img && typeof base64Img === 'string') {
-              // Draw image within cell constraints (with padding)
-              const dim = 14; 
-              doc.addImage(base64Img, 'JPEG', data.cell.x + 3, data.cell.y + 3, dim, dim);
+              try {
+                // Determine format from dataURI or default to JPEG
+                const format = base64Img.includes('image/png') ? 'PNG' : 'JPEG';
+                const dim = 14; 
+                doc.addImage(base64Img, format, data.cell.x + 3, data.cell.y + 3, dim, dim);
+              } catch(e) {
+                console.error("Failed drawing image in PDF", e);
+              }
             }
           }
         },
         willDrawCell: function(data) {
-          // Hide base64 string text from rendering
           if (data.column.index === 1 && data.cell.section === 'body') {
             data.cell.text = []; 
           }
@@ -165,7 +169,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
       const finalY = (doc as any).lastAutoTable?.finalY || 100;
       
       // Calculation Breakdown
-      const subtotal = quotation.items.reduce((sum, item) => sum + item.subtotal, 0);
+      const subtotal = quotation.items.reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0);
       let currentY = finalY + 10;
 
       doc.setFontSize(10);
@@ -184,6 +188,12 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         const taxAmount = (subtotal - quotation.discount) * (quotation.tax_rate / 100);
         doc.text(`PPN (${quotation.tax_rate}%):`, 140, currentY);
         doc.text(formatCurrency(taxAmount), 196, currentY, { align: 'right' });
+        currentY += 6;
+      }
+
+      if (quotation.shipping_fee > 0) {
+        doc.text('Ongkos Kirim:', 140, currentY);
+        doc.text(formatCurrency(quotation.shipping_fee), 196, currentY, { align: 'right' });
         currentY += 6;
       }
 
@@ -216,25 +226,34 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  if (loading) return <div>Memuat detail...</div>;
-  if (!quotation) return <div>Quotation tidak ditemukan.</div>;
+  if (loading) return <div className="p-8 text-center animate-pulse">Memuat detail...</div>;
+  if (!quotation) return <div className="p-8 text-center">Quotation tidak ditemukan.</div>;
 
-  const subtotal = quotation.items.reduce((sum, item) => sum + item.subtotal, 0);
+  const subtotal = quotation.items.reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0);
   const taxAmount = (subtotal - quotation.discount) * (quotation.tax_rate / 100);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4">
-        <Link href="/admin/quotations" className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            {quotation.quotation_number}
-            <StatusBadge status={quotation.status} />
-          </h1>
-          <p className="text-slate-500 mt-1">Dibuat pada {formatDate(quotation.created_at)}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <Link href="/admin/quotations" className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+              {quotation.quotation_number}
+              <StatusBadge status={quotation.status} />
+            </h1>
+            <p className="text-slate-500 mt-1">Dibuat pada {formatDate(quotation.created_at)}</p>
+          </div>
         </div>
+        <Link 
+          href={`/admin/quotations/${quotation.id}/edit`}
+          className="inline-flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm w-fit"
+        >
+          <Edit size={16} />
+          <span>Edit Penawaran</span>
+        </Link>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
@@ -311,7 +330,8 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
             <div className="p-6 border-b border-slate-100">
               <h2 className="text-lg font-semibold text-slate-800">Detail Barang</h2>
             </div>
-            <div className="overflow-x-auto">
+            
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
@@ -343,31 +363,59 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
                       <td className="px-4 py-4 font-medium text-slate-800">{item.item_name}</td>
                       <td className="px-4 py-4 text-center text-slate-700">{item.quantity}</td>
                       <td className="px-4 py-4 text-center text-slate-700">{item.unit}</td>
-                      <td className="px-4 py-4 text-right text-slate-700">{formatCurrency(item.unit_price)}</td>
-                      <td className="px-4 py-4 text-right font-medium text-slate-800">{formatCurrency(item.subtotal)}</td>
+                      <td className="px-4 py-4 text-right text-slate-700">{formatCurrency(item.unit_price || 0)}</td>
+                      <td className="px-4 py-4 text-right font-medium text-slate-800">{formatCurrency(item.quantity * (item.unit_price || 0))}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile List Detail */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {quotation.items.map((item, idx) => (
+                <div key={item.id} className="p-4 flex gap-4">
+                  <div className="w-16 h-16 shrink-0 rounded bg-slate-100 flex items-center justify-center overflow-hidden">
+                    {item.image_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={item.image_url} alt={item.item_name} className="object-cover w-full h-full" />
+                    ) : (
+                      <ImageIcon size={24} className="text-slate-300" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-slate-800 text-sm">{item.item_name}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{item.quantity} {item.unit} x {formatCurrency(item.unit_price || 0)}</p>
+                    <p className="font-bold text-slate-800 mt-2 text-sm">{formatCurrency(item.quantity * (item.unit_price || 0))}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="bg-slate-50 p-6 flex flex-col items-end gap-2 border-t border-slate-200 text-sm">
-              <div className="flex justify-between w-64">
+              <div className="flex justify-between w-full sm:w-64">
                 <span className="text-slate-500">Subtotal</span>
                 <span className="font-medium text-slate-700">{formatCurrency(subtotal)}</span>
               </div>
               {quotation.discount > 0 && (
-                <div className="flex justify-between w-64 text-red-500">
+                <div className="flex justify-between w-full sm:w-64 text-red-500">
                   <span>Diskon</span>
                   <span>-{formatCurrency(quotation.discount)}</span>
                 </div>
               )}
               {quotation.tax_rate > 0 && (
-                <div className="flex justify-between w-64">
+                <div className="flex justify-between w-full sm:w-64">
                   <span className="text-slate-500">PPN ({quotation.tax_rate}%)</span>
                   <span className="font-medium text-slate-700">{formatCurrency(taxAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between w-64 pt-2 border-t border-slate-200 mt-1">
+              {quotation.shipping_fee > 0 && (
+                <div className="flex justify-between w-full sm:w-64">
+                  <span className="text-slate-500">Ongkos Kirim</span>
+                  <span className="font-medium text-slate-700">{formatCurrency(quotation.shipping_fee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between w-full sm:w-64 pt-2 border-t border-slate-200 mt-1">
                 <span className="font-bold text-slate-700 uppercase tracking-wide">Grand Total</span>
                 <span className="text-xl font-bold text-amber-600">{formatCurrency(quotation.grand_total)}</span>
               </div>

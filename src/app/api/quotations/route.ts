@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { client_name, client_company, client_address, client_phone, items, notes, discount = 0, tax_rate = 0, valid_days = 7 } = body;
+    const { client_name, client_company, client_address, client_phone, items, notes, discount = 0, tax_rate = 0, shipping_fee = 0, valid_days = 7 } = body;
 
     if (!client_name || !items || items.length === 0) {
       return NextResponse.json(
@@ -52,14 +52,14 @@ export async function POST(request: NextRequest) {
     // Hitung subtotal barang
     const itemsTotal = items.reduce(
       (sum: number, item: { quantity: number; unit_price: number }) =>
-        sum + item.quantity * item.unit_price,
+        sum + item.quantity * (item.unit_price || 0),
       0
     );
 
     // Hitung PPN (setelah dipotong diskon)
     const amountAfterDiscount = itemsTotal - Number(discount);
     const taxAmount = amountAfterDiscount * (Number(tax_rate) / 100);
-    const grandTotal = amountAfterDiscount + taxAmount;
+    const grandTotal = amountAfterDiscount + taxAmount + Number(shipping_fee);
 
     // Insert quotation
     const { error: quotationError } = await supabase.from('quotations').insert({
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       status: 'DRAFT',
       discount: Number(discount),
       tax_rate: Number(tax_rate),
+      shipping_fee: Number(shipping_fee),
       valid_days: Number(valid_days),
       grand_total: grandTotal,
       notes: notes || '',
