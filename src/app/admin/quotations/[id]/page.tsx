@@ -112,6 +112,8 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
 
       // Fetch images for PDF (convert to base64 via browser + wsrv.nl proxy)
       const tableData: any[][] = [];
+      const tableImages: (string | null)[] = []; // Store images separately to avoid text-wrap freeze
+      
       for (let i = 0; i < quotation.items.length; i++) {
         const item = quotation.items[i];
         let base64Img = null;
@@ -137,9 +139,11 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
           }
         }
 
+        tableImages.push(base64Img);
+
         tableData.push([
           i + 1,
-          base64Img, // Will be drawn in didDrawCell
+          '', // Empty string for autotable, so it doesn't try to render base64 text
           item.item_name,
           item.quantity,
           item.unit,
@@ -165,7 +169,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         },
         didDrawCell: function(data) {
           if (data.column.index === 1 && data.cell.section === 'body') {
-            const base64Img = tableData[data.row.index][1];
+            const base64Img = tableImages[data.row.index];
             if (base64Img && typeof base64Img === 'string') {
               try {
                 // Selalu asumsikan JPEG karena wsrv.nl sudah memaksa output=jpg
