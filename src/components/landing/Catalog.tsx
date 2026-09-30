@@ -27,7 +27,7 @@ export default async function Catalog() {
               <div className="h-56 bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden relative group-hover:bg-slate-200 transition-colors">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={product.image_url} alt={product.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
                   <Package size={48} strokeWidth={1} />
                 )}
