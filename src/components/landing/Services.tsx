@@ -39,17 +39,17 @@ export default function Services() {
           <p className="text-lg text-slate-600">Solusi lengkap untuk setiap kebutuhan pengadaan bisnis Anda</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="flex flex-wrap justify-center gap-6">
           {services.map((service, index) => (
             <div 
               key={index} 
-              className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
+              <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4">
                 {service.icon}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{service.title}</h3>
-              <p className="text-slate-600 leading-relaxed">{service.description}</p>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">{service.title}</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">{service.description}</p>
             </div>
           ))}
         </div>

@@ -28,10 +28,10 @@ export default function SettingsPage() {
       .then(data => {
         if (data.settings) {
           const products = data.settings.featured_products || [];
-          while (products.length < 6) {
+          while (products.length < 9) {
             products.push({ id: Math.random().toString(36).substr(2, 9), name: '', category: '', image_url: '' });
           }
-          setSettings({ ...data.settings, featured_products: products.slice(0, 6) });
+          setSettings({ ...data.settings, featured_products: products.slice(0, 9) });
         }
       })
       .finally(() => setLoading(false));
@@ -157,7 +157,7 @@ export default function SettingsPage() {
 
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium text-slate-700">Produk Unggulan (Maks. 6 Produk)</h3>
+              <h3 className="font-medium text-slate-700">Produk Unggulan (Maks. 9 Produk)</h3>
               <p className="text-xs text-slate-500">Isi form di bawah. Form yang dikosongkan tidak akan ditampilkan.</p>
             </div>
             

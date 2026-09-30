@@ -120,9 +120,14 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
         
         if (item.image_url) {
           try {
-            // Kita fetch langsung dari browser via proxy wsrv.nl agar tidak terkena limit serverless Vercel
+            // Kita fetch langsung dari browser via proxy wsrv.nl dengan batas waktu (timeout) 5 detik
             const optimizedUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.image_url)}&output=jpg&w=400&q=80`;
-            const res = await fetch(optimizedUrl);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const res = await fetch(optimizedUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
             if (res.ok) {
               const blob = await res.blob();
               base64Img = await new Promise<string>((resolve, reject) => {
@@ -135,7 +140,7 @@ export default function QuotationDetailPage({ params }: { params: Promise<{ id: 
               console.warn('Gagal memuat gambar dari:', optimizedUrl, res.status);
             }
           } catch (e) {
-            console.error('Failed to load image for PDF', e);
+            console.error('Failed to load image for PDF (timeout/network error)', e);
           }
         }
 
